@@ -1,115 +1,66 @@
 import React, { useEffect, useRef, useState } from "react";
 import { URL } from "./constant";
-import RecentSearch from "./components/RecentSearch";
 import QuestionAnswer from "./components/QuestionAnswer";
 import SpeechTextInput from "./components/SpeechTextInput";
-import DarkModeToggle from "./components/DarkModeToggle";
 import { addEmojisToAnswer } from "./utils/emojiEnhancer";
+import Sidebar from "./components/Sidebar";
+import Navbar from "./components/Navbar";
 
 function App() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState([]);
-  const [recentHistory, setRecentHistory] = useState(
-    JSON.parse(localStorage.getItem("history")) || []
-  );
-  const [selectedHistory, setSelectedHistory] = useState("");
-  const scrolltoAns = useRef(null);
   const [loader, setLoader] = useState(false);
-  const [darkMode, setDarkMode] = useState("dark");
+  const scrolltoAns = useRef(null);
 
- 
+  const askQuestion = async (overrideQuestion) => {
+    const textToAsk = overrideQuestion || question;
+    if (!textToAsk) return;
 
+    const payloadData = textToAsk;
+    const payload = {
+      prompt: payloadData,
+    };
 
-
-const askQuestion = async () => {
-  if (!question && !selectedHistory) return;
-
-  if (question) {
-    let history = JSON.parse(localStorage.getItem("history")) || [];
-    history = [question, ...history.slice(0, 19)];
-    history = [...new Set(history)].map(
-      (item) => item.charAt(0).toUpperCase() + item.slice(1).trim()
-    );
-    localStorage.setItem("history", JSON.stringify(history));
-    setRecentHistory(history);
-  }
-
-  const payloadData = question || selectedHistory;
-  const payload = {
-    prompt: payloadData,
-  };
-
-  setLoader(true);
-
-  try {
-    let response = await fetch(URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    response = await response.json();
-    let dataString = response.answer;
-
-    // ✅ Add emojis to API answer
-    const emojiAnswer = addEmojisToAnswer(dataString);
-
-    // ✅ Ensure scroll ref exists before continuing
-    if (!scrolltoAns.current) return;
-
-    // ✅ Show final answer with emojis
-    showWordByWordAnswer(payloadData, emojiAnswer);
+    setLoader(true);
     setQuestion("");
 
-    setTimeout(() => {
-      if (scrolltoAns.current) {
-        scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
-      }
-    }, 500);
-    setLoader(false);
+    try {
+      let response = await fetch(URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
 
-  } catch (error) {
-    console.error("Error while fetching:", error);
-    setLoader(false);
-  }
-};
+      response = await response.json();
+      let dataString = response.answer || "I'm sorry, I couldn't get a response.";
 
+      const emojiAnswer = addEmojisToAnswer(dataString);
 
+      if (!scrolltoAns.current && result.length > 0) return;
 
+      showWordByWordAnswer(payloadData, emojiAnswer);
 
-
-  const isEnter = (event) => {
-    if (event.key === "Enter") askQuestion();
+      setTimeout(() => {
+        if (scrolltoAns.current) {
+          scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
+        }
+      }, 500);
+      setLoader(false);
+    } catch (error) {
+      console.error("Error while fetching:", error);
+      setLoader(false);
+    }
   };
 
-  useEffect(() => {
-    askQuestion();
-  }, [selectedHistory]);
-
-  useEffect(() => {
-    if (darkMode === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
-
   const showWordByWordAnswer = (questionText, fullAnswer) => {
-    if (!scrolltoAns.current) return;
-
     setResult((prev) => [...prev, { type: "q", text: questionText }]);
 
     const words = fullAnswer.split(" ");
     let index = 0;
 
     const interval = setInterval(() => {
-      if (!scrolltoAns.current) {
-        clearInterval(interval);
-        return;
-      }
-
       if (index < words.length) {
         setResult((prev) => {
           const lastItem = prev[prev.length - 1];
@@ -123,76 +74,108 @@ const askQuestion = async () => {
         });
 
         index++;
-        scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
+        if (scrolltoAns.current) {
+          scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
+        }
       } else {
         clearInterval(interval);
         setLoader(false);
       }
-    }, 80);
+    }, 40); // Faster typing speed
   };
 
+  const suggestions = [
+    "I'd like support in writing an email.",
+    "Explain the concept clearly.",
+    "Create a daily plan"
+  ];
+
+  const isChatActive = result.length > 0;
+
   return (
-    <div className="min-h-screen dark:bg-zinc-900 bg-white">
-      <div className="grid grid-cols-1 md:grid-cols-5 h-full overflow-hidden md:px-10">
-        <div className="md:col-span-1 h-full overflow-y-auto p-2 border-r border-zinc-700 ">
-          <RecentSearch
-            recentHistory={recentHistory}
-            setRecentHistory={setRecentHistory}
-            setSelectedHistory={setSelectedHistory}
-          />
-        </div>
+    <div className="min-h-screen bg-app-gradient flex overflow-hidden">
+      {/* Sidebar */}
+      <Sidebar />
 
-        <div className="md:col-span-4 flex flex-col h-full sm:pl-48 sm:pr-12 md:px-10 ">
-          <div className="p-4 text-center ">
-            <h1 className="text-4xl  font-bold
-             text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600 animate-gradient">
-              I'm Jinny, How can I help you, dear 💬
-            </h1>
-          </div>
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <Navbar />
 
-          <div
-            ref={scrolltoAns}
-            className="flex-1 overflow-y-auto px-4 pb-32 text-zinc-800 dark:text-zinc-300"
-          >
-            <ul>
+        {/* Content Area */}
+        <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-8 w-full relative" ref={scrolltoAns}>
+          
+          {!isChatActive ? (
+            // Empty State
+            <div className="flex flex-col items-center justify-center w-full max-w-4xl mt-20 animate-fade-in">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl text-white font-serif font-medium text-center mb-4 tracking-wide drop-shadow-md">
+                What do you need help with today?
+              </h1>
+              <p className="text-white/80 text-lg sm:text-xl font-light mb-12 text-center">
+                Tell me what you need, and I'll make it happen.
+              </p>
+
+              <SpeechTextInput
+                question={question}
+                setQuestion={setQuestion}
+                askQuestion={() => askQuestion()}
+                isChatActive={false}
+              />
+
+              <div className="flex flex-wrap justify-center gap-4 mt-8">
+                {suggestions.map((sug, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => askQuestion(sug)}
+                    className="px-6 py-3 rounded-full bg-white text-gray-800 text-sm font-medium shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                  >
+                    {sug}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            // Chat State
+            <div className="w-full max-w-4xl mx-auto flex flex-col pb-40 pt-4">
               {result.map((item, index) => (
                 <QuestionAnswer key={index} item={item} index={index} />
               ))}
               {loader && (
-                <div className="flex items-center justify-end px-5 pb-3">
-                  <div
-                    className="bg-zinc-100 dark:bg-zinc-700 text-black dark:text-white 
-                    px-4 py-3 rounded-2xl rounded-br-none w-fit shadow-sm"
-                  >
-                    <div className="flex gap-1 text-xl font-bold">
-                      <span className="animate-bounce [animation-delay:-0.3s]">
-                        .
-                      </span>
-                      <span className="animate-bounce [animation-delay:-0.15s]">
-                        .
-                      </span>
-                      <span className="animate-bounce">.</span>
-                    </div>
+                <div className="flex justify-start mb-6">
+                  <div className="glass-panel text-gray-800 px-6 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+                    <span className="animate-bounce [animation-delay:-0.3s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                    <span className="animate-bounce [animation-delay:-0.15s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                    <span className="animate-bounce w-2 h-2 bg-[#f26e22] rounded-full"></span>
                   </div>
                 </div>
               )}
-            </ul>
-          </div>
-
-          <div className="fixed bottom-0 left-0 w-full px-4 py-3 bg-white dark:bg-zinc-800 border-t dark:border-zinc-700 flex flex-col sm:flex-col sm:w-screen sm:ml-40 sm:px-12 rounded-2xl items-center gap-2">
-            <div className="fixed bottom-0 left-0 w-full px-4 py-3 bg-white dark:bg-zinc-800 border-t dark:border-zinc-700">
-              <div className="w-full max-w-5xl mx-auto flex flex-col items-center gap-2 px-4">
-                <SpeechTextInput
-                  question={question}
-                  setQuestion={setQuestion}
-                  askQuestion={askQuestion}
-                />
-                <DarkModeToggle />
-              </div>
             </div>
-          </div>
+          )}
+
+          {/* Chat active input container */}
+          {isChatActive && (
+            <div className="fixed bottom-0 left-16 sm:left-20 right-0 p-4 bg-gradient-to-t from-[#fcfcfc] via-[#fcfcfc]/90 to-transparent flex flex-col items-center">
+              <SpeechTextInput
+                question={question}
+                setQuestion={setQuestion}
+                askQuestion={() => askQuestion()}
+                isChatActive={true}
+              />
+              <p className="text-gray-400 text-xs mt-2 font-medium">
+                Jinny AI can make mistakes. Check important info.
+              </p>
+            </div>
+          )}
+
+          {/* Empty state footer */}
+          {!isChatActive && (
+            <div className="absolute bottom-6 w-full text-center">
+              <p className="text-black/40 text-sm font-medium">
+                Jinny AI can make mistakes. <span className="underline cursor-pointer">Check important info.</span>
+              </p>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

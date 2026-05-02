@@ -2,8 +2,9 @@ import React, { useEffect, useRef } from "react";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import { Plus, SlidersHorizontal, Paperclip, Mic, MicOff, ArrowUp } from "lucide-react";
 
-function SpeechTextInput({ question, setQuestion, askQuestion }) {
+function SpeechTextInput({ question, setQuestion, askQuestion, isChatActive }) {
   const {
     transcript,
     listening,
@@ -14,16 +15,10 @@ function SpeechTextInput({ question, setQuestion, askQuestion }) {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    setQuestion(transcript);
-  }, [transcript]);
-
-  if (!browserSupportsSpeechRecognition) {
-    return (
-      <p className="text-red-500 text-center">
-        🎤 Speech Recognition not supported in this browser
-      </p>
-    );
-  }
+    if (transcript) {
+      setQuestion(transcript);
+    }
+  }, [transcript, setQuestion]);
 
   const handleMicClick = () => {
     if (listening) {
@@ -55,64 +50,57 @@ function SpeechTextInput({ question, setQuestion, askQuestion }) {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-wrap items-end gap-2 px-4">
-      {/* Textarea input */}
-      <textarea
-        value={question}
-        onChange={(e) => setQuestion(e.target.value)}
-        onKeyDown={handleKeyDown}
-        rows={1}
-        placeholder="Type or speak your question..."
-        className="flex-1 h-12 resize-none overflow-hidden 
-    p-2 sm:p-3 md:p-3 lg:p-2
-    lg:ml-20 md:ml-48 sm:ml-48
-    rounded-xl bg-transparent border 
-    border-zinc-400 dark:border-zinc-600 
-    text-zinc-900 dark:text-white 
-    placeholder:text-zinc-400 outline-none 
-    text-sm sm:text-base md:text-lg lg:text-xl 
-    transition-all duration-300"
-      />
+    <div className={`w-full max-w-4xl mx-auto transition-all duration-500 ${isChatActive ? 'mt-4 mb-4' : 'mt-12'}`}>
+      <div className="glass-panel rounded-3xl p-4 sm:p-6 flex flex-col gap-4 shadow-xl">
+        <textarea
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyDown}
+          rows={isChatActive ? 2 : 4}
+          placeholder="Ask Me Anything..."
+          className="w-full resize-none bg-transparent text-gray-800 placeholder:text-gray-500/80 outline-none text-lg sm:text-xl font-medium scrollbar-hide"
+        />
 
-      {/* Buttons */}
-      <div className="flex gap-2 shrink-0">
-        {/* 🎤 Mic */}
-        <button
-          onClick={handleMicClick}
-          className={`p-3 rounded-full transition-all duration-200 
-            ${
-              listening
-                ? "bg-green-500 animate-pulse"
-                : "dark:bg-zinc-700 bg-red-300"
-            } 
-            text-white`}
-          title={listening ? "Listening..." : "Click to speak"}
-        >
-          {listening ? "🛑" : "🎤"}
-        </button>
+        <div className="flex items-center justify-between mt-2">
+          {/* Left Icons */}
+          <div className="flex items-center gap-3">
+            <button className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-colors text-gray-700">
+              <Plus className="w-5 h-5" />
+            </button>
+            <button className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-colors text-gray-700">
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
+          </div>
 
-        {/* ⬆️ Send */}
-        <button
-          onClick={askQuestion}
-          className="p-3 rounded-full dark:bg-white bg-red-300 dark:text-black text-black 
-            hover:scale-105 transition-transform font-bold"
-          title="Send"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 10l7-7m0 0l7 7m-7-7v18"
-            />
-          </svg>
-        </button>
+          {/* Right Icons */}
+          <div className="flex items-center gap-3">
+            <button className="p-2 bg-white/20 hover:bg-white/40 rounded-xl transition-colors text-gray-700 hidden sm:block">
+              <Paperclip className="w-5 h-5" />
+            </button>
+
+            {browserSupportsSpeechRecognition && (
+              <button
+                onClick={handleMicClick}
+                className={`p-2 rounded-xl transition-colors ${
+                  listening ? "bg-red-500 text-white animate-pulse" : "bg-white/20 hover:bg-white/40 text-gray-700"
+                }`}
+                title={listening ? "Listening..." : "Click to speak"}
+              >
+                {listening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
+            )}
+
+            <button
+              onClick={askQuestion}
+              disabled={!question.trim()}
+              className={`p-2 rounded-xl transition-all ${
+                question.trim() ? "bg-[#f26e22] hover:bg-[#d95d18] text-white" : "bg-white/20 text-gray-400 cursor-not-allowed"
+              }`}
+            >
+              <ArrowUp className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
