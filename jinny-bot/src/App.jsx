@@ -102,7 +102,7 @@ function App() {
         <Navbar />
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 sm:px-8 w-full relative" ref={scrolltoAns}>
+        <div className="flex-1 flex flex-col items-center overflow-y-auto px-4 md:px-8 w-full relative" ref={scrolltoAns}>
           
           {!isChatActive ? (
             // Empty State
@@ -153,7 +153,7 @@ function App() {
 
           {/* Chat active input container */}
           {isChatActive && (
-            <div className="fixed bottom-0 left-16 sm:left-20 right-0 p-4 bg-gradient-to-t from-[#fcfcfc] via-[#fcfcfc]/90 to-transparent flex flex-col items-center">
+            <div className="fixed bottom-0 left-0 md:left-20 right-0 p-4 bg-gradient-to-t from-[#fcfcfc] via-[#fcfcfc]/90 to-transparent flex flex-col items-center">
               <SpeechTextInput
                 question={question}
                 setQuestion={setQuestion}

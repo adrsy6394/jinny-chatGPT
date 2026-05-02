@@ -3,7 +3,7 @@ import { Bell, Share, User } from "lucide-react";
 
 export default function Navbar() {
   return (
-    <nav className="w-full flex items-center justify-between px-8 py-4 bg-transparent z-10">
+    <nav className="w-full flex items-center justify-between px-4 md:px-8 py-4 bg-transparent z-10">
       <div className="text-white text-xl font-medium tracking-wide">
         Jinny AI
       </div>
