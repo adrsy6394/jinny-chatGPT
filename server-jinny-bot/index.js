@@ -8,7 +8,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173", 
+    "http://localhost:3000", 
+    "https://jinny-chat-gpt-kkfo.vercel.app"
+  ]
+}));
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -35,7 +41,7 @@ app.post('/api/chat', async (req, res) => {
         headers: {
           "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter for ranking
+          "HTTP-Referer": "https://jinny-chat-gpt-kkfo.vercel.app", // Required by OpenRouter for ranking
           "X-Title": "Jinny Bot", // Required by OpenRouter for ranking
         }
       }
