@@ -135,7 +135,7 @@ function App() {
             </div>
           ) : (
             // Chat State
-            <div className="w-full max-w-4xl mx-auto flex flex-col pb-40 pt-4">
+            <div className="w-full max-w-4xl mx-auto flex flex-col pb-64 pt-4">
               {result.map((item, index) => (
                 <QuestionAnswer key={index} item={item} index={index} />
               ))}
