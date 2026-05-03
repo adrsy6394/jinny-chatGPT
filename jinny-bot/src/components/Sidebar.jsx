@@ -1,13 +1,19 @@
 import React, { useState } from "react";
-import { Plus, MessageSquare, Trash2, Menu, X, Edit3 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Menu, X, Edit3, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHistory, startNewChat, fetchHistory, HISTORY_URL }) {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const clearHistory = async () => {
     try {
       if (HISTORY_URL) {
-        await fetch(HISTORY_URL, { method: "DELETE" });
+        const token = localStorage.getItem('token');
+        await fetch(HISTORY_URL, { 
+          method: "DELETE",
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
       }
       setRecentHistory([]);
     } catch (error) {
@@ -19,7 +25,11 @@ export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHi
     e.stopPropagation();
     try {
       if (HISTORY_URL && item.id) {
-        await fetch(`${HISTORY_URL}/${item.id}`, { method: "DELETE" });
+        const token = localStorage.getItem('token');
+        await fetch(`${HISTORY_URL}/${item.id}`, { 
+          method: "DELETE",
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
       }
       setRecentHistory(prev => prev.filter(i => (i.id ? i.id !== item.id : i !== item)));
     } catch (error) {
@@ -115,6 +125,21 @@ export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHi
               </div>
             ))
           )}
+        </div>
+
+        {/* Logout Button */}
+        <div className="mt-auto pt-4 border-t border-white/10 px-2">
+          <button 
+            onClick={() => {
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+              navigate('/login');
+            }}
+            className="flex items-center gap-3 w-full p-2.5 hover:bg-white/10 text-white/90 hover:text-white rounded-xl transition-colors text-sm"
+          >
+            <LogOut className="w-4 h-4 opacity-80" />
+            <span className="font-medium">Logout</span>
+          </button>
         </div>
 
       </aside>

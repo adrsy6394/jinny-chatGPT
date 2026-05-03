@@ -4,6 +4,10 @@ const dotenv = require('dotenv');
 const axios = require('axios');
 const mongoose = require('mongoose');
 const History = require('./models/History');
+const User = require('./models/User');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const auth = require('./middleware/auth');
 
 dotenv.config();
 
@@ -22,7 +26,46 @@ app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
-app.post('/api/chat', async (req, res) => {
+// Auth Routes
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: 'User already exists' });
+
+    user = new User({ name, email, password });
+    await user.save();
+
+    const payload = { id: user.id };
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret123', { expiresIn: '7d' });
+
+    res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+
+    const payload = { id: user.id };
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret123', { expiresIn: '7d' });
+
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.post('/api/chat', auth, async (req, res) => {
   try {
     const { prompt } = req.body;
 
@@ -31,7 +74,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     // Save prompt to MongoDB
-    await History.create({ prompt });
+    await History.create({ prompt, userId: req.user.id });
 
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -61,9 +104,9 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.get('/api/history', async (req, res) => {
+app.get('/api/history', auth, async (req, res) => {
   try {
-    const history = await History.find().sort({ createdAt: -1 }).limit(20);
+    const history = await History.find({ userId: req.user.id }).sort({ createdAt: -1 }).limit(20);
     // Remove duplicates based on prompt by tracking seen prompts
     const uniqueHistory = [];
     const seen = new Set();
@@ -80,9 +123,9 @@ app.get('/api/history', async (req, res) => {
   }
 });
 
-app.delete('/api/history', async (req, res) => {
+app.delete('/api/history', auth, async (req, res) => {
   try {
-    await History.deleteMany({});
+    await History.deleteMany({ userId: req.user.id });
     res.json({ message: "History cleared successfully" });
   } catch (error) {
     console.error("Error clearing history:", error);
@@ -90,9 +133,9 @@ app.delete('/api/history', async (req, res) => {
   }
 });
 
-app.delete('/api/history/:id', async (req, res) => {
+app.delete('/api/history/:id', auth, async (req, res) => {
   try {
-    await History.findByIdAndDelete(req.params.id);
+    await History.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
     res.json({ message: "History item deleted successfully" });
   } catch (error) {
     console.error("Error deleting history item:", error);
