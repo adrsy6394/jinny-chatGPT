@@ -12,9 +12,33 @@ function App() {
   const [loader, setLoader] = useState(false);
   const scrolltoAns = useRef(null);
 
+  // History states
+  const [recentHistory, setRecentHistory] = useState(
+    JSON.parse(localStorage.getItem("history")) || []
+  );
+  const [selectedHistory, setSelectedHistory] = useState("");
+
+  useEffect(() => {
+    if (selectedHistory) {
+      askQuestion(selectedHistory);
+      setSelectedHistory(""); // Reset so clicking the same item works again
+    }
+  }, [selectedHistory]);
+
+  const startNewChat = () => {
+    setResult([]);
+    setQuestion("");
+  };
+
   const askQuestion = async (overrideQuestion) => {
     const textToAsk = overrideQuestion || question;
     if (!textToAsk) return;
+
+    // Update history
+    let history = JSON.parse(localStorage.getItem("history")) || [];
+    history = [textToAsk, ...history.filter(i => i !== textToAsk)].slice(0, 19);
+    localStorage.setItem("history", JSON.stringify(history));
+    setRecentHistory(history);
 
     const payloadData = textToAsk;
     const payload = {
@@ -94,8 +118,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-app-gradient flex overflow-hidden">
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar with History */}
+      <Sidebar 
+        recentHistory={recentHistory} 
+        setRecentHistory={setRecentHistory} 
+        setSelectedHistory={setSelectedHistory} 
+        startNewChat={startNewChat}
+      />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
@@ -153,7 +182,7 @@ function App() {
 
           {/* Chat active input container */}
           {isChatActive && (
-            <div className="fixed bottom-0 left-0 md:left-20 right-0 p-4 bg-gradient-to-t from-[#fcfcfc] via-[#fcfcfc]/90 to-transparent flex flex-col items-center">
+            <div className="fixed bottom-0 left-0 md:left-64 right-0 p-4 bg-gradient-to-t from-[#fcfcfc] via-[#fcfcfc]/90 to-transparent flex flex-col items-center">
               <SpeechTextInput
                 question={question}
                 setQuestion={setQuestion}
