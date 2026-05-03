@@ -13,10 +13,26 @@ function App() {
   const scrolltoAns = useRef(null);
 
   // History states
-  const [recentHistory, setRecentHistory] = useState(
-    JSON.parse(localStorage.getItem("history")) || []
-  );
+  const [recentHistory, setRecentHistory] = useState([]);
   const [selectedHistory, setSelectedHistory] = useState("");
+
+  const HISTORY_URL = URL.replace('/chat', '/history');
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch(HISTORY_URL);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setRecentHistory(data);
+      }
+    } catch (error) {
+      console.error("Error fetching history:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   useEffect(() => {
     if (selectedHistory) {
@@ -34,11 +50,11 @@ function App() {
     const textToAsk = overrideQuestion || question;
     if (!textToAsk) return;
 
-    // Update history
-    let history = JSON.parse(localStorage.getItem("history")) || [];
-    history = [textToAsk, ...history.filter(i => i !== textToAsk)].slice(0, 19);
-    localStorage.setItem("history", JSON.stringify(history));
-    setRecentHistory(history);
+    // Optimistically update history UI
+    setRecentHistory(prev => {
+      const existing = prev.filter(i => i.prompt !== textToAsk);
+      return [{ id: Date.now(), prompt: textToAsk }, ...existing].slice(0, 20);
+    });
 
     const payloadData = textToAsk;
     const payload = {
@@ -72,6 +88,9 @@ function App() {
         }
       }, 500);
       setLoader(false);
+      
+      // Fetch latest history from backend to get proper IDs
+      fetchHistory();
     } catch (error) {
       console.error("Error while fetching:", error);
       setLoader(false);
@@ -124,6 +143,8 @@ function App() {
         setRecentHistory={setRecentHistory} 
         setSelectedHistory={setSelectedHistory} 
         startNewChat={startNewChat}
+        fetchHistory={fetchHistory}
+        HISTORY_URL={HISTORY_URL}
       />
 
       {/* Main Content */}

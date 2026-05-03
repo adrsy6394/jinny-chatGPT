@@ -1,19 +1,30 @@
 import React, { useState } from "react";
 import { Plus, MessageSquare, Trash2, Menu, X, Edit3 } from "lucide-react";
 
-export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHistory, startNewChat }) {
+export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHistory, startNewChat, fetchHistory, HISTORY_URL }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const clearHistory = () => {
-    localStorage.removeItem("history");
-    setRecentHistory([]);
+  const clearHistory = async () => {
+    try {
+      if (HISTORY_URL) {
+        await fetch(HISTORY_URL, { method: "DELETE" });
+      }
+      setRecentHistory([]);
+    } catch (error) {
+      console.error("Error clearing history:", error);
+    }
   };
 
-  const deleteItem = (e, item) => {
+  const deleteItem = async (e, item) => {
     e.stopPropagation();
-    let history = recentHistory.filter(i => i !== item);
-    localStorage.setItem("history", JSON.stringify(history));
-    setRecentHistory(history);
+    try {
+      if (HISTORY_URL && item.id) {
+        await fetch(`${HISTORY_URL}/${item.id}`, { method: "DELETE" });
+      }
+      setRecentHistory(prev => prev.filter(i => (i.id ? i.id !== item.id : i !== item)));
+    } catch (error) {
+      console.error("Error deleting item:", error);
+    }
   };
 
   const handleSelectHistory = (item) => {
@@ -86,13 +97,13 @@ export default function Sidebar({ recentHistory, setRecentHistory, setSelectedHi
           ) : (
             recentHistory.map((item, idx) => (
               <div 
-                key={idx} 
-                onClick={() => handleSelectHistory(item)}
+                key={item.id || idx} 
+                onClick={() => handleSelectHistory(item.prompt || item)}
                 className="group flex items-center justify-between w-full p-2.5 hover:bg-white/15 rounded-xl cursor-pointer transition-colors text-white"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
-                  <span className="truncate text-sm opacity-90 group-hover:opacity-100">{item}</span>
+                  <span className="truncate text-sm opacity-90 group-hover:opacity-100">{item.prompt || item}</span>
                 </div>
                 <button 
                   onClick={(e) => deleteItem(e, item)}
