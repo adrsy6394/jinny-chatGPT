@@ -67,35 +67,48 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/chat', auth, async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { prompt, images } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
+    if (!prompt && (!images || images.length === 0)) {
+      return res.status(400).json({ error: "Prompt or image is required" });
     }
 
     // Save prompt to MongoDB
-    await History.create({ prompt, userId: req.user.id });
+    await History.create({ prompt: prompt || '(image uploaded)', userId: req.user.id });
+
+    // Build message content - support vision (images + text)
+    let messageContent;
+    if (images && images.length > 0) {
+      messageContent = [
+        { type: "text", text: prompt || "Please analyze the uploaded image(s) and describe them in detail." },
+        ...images.map(img => ({
+          type: "image_url",
+          image_url: { url: `data:${img.type};base64,${img.data}` }
+        }))
+      ];
+    } else {
+      messageContent = prompt;
+    }
 
     const response = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
       {
         model: "google/gemini-2.0-flash-001",
         messages: [
-          { role: "user", content: prompt }
+          { role: "user", content: messageContent }
         ],
       },
       {
         headers: {
           "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://jinny-chat-gpt-kkfo.vercel.app", // Required by OpenRouter for ranking
-          "X-Title": "Jinny Bot", // Required by OpenRouter for ranking
+          "HTTP-Referer": "https://jinny-chat-gpt-kkfo.vercel.app",
+          "X-Title": "Jinny Bot",
         }
       }
     );
 
     const answer = response.data.choices[0].message.content;
-    
     res.json({ answer });
 
   } catch (error) {

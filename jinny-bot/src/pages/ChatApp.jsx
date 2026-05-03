@@ -56,19 +56,23 @@ function ChatApp() {
     setQuestion("");
   };
 
-  const askQuestion = async (overrideQuestion) => {
+  const askQuestion = async (overrideQuestion, images = []) => {
     const textToAsk = overrideQuestion || question;
-    if (!textToAsk) return;
+    if (!textToAsk && images.length === 0) return;
+
+    const displayText = textToAsk || "(Image uploaded)";
 
     // Optimistically update history UI
-    setRecentHistory(prev => {
-      const existing = prev.filter(i => i.prompt !== textToAsk);
-      return [{ id: Date.now(), prompt: textToAsk }, ...existing].slice(0, 20);
-    });
+    if (textToAsk) {
+      setRecentHistory(prev => {
+        const existing = prev.filter(i => i.prompt !== textToAsk);
+        return [{ id: Date.now(), prompt: textToAsk }, ...existing].slice(0, 20);
+      });
+    }
 
-    const payloadData = textToAsk;
     const payload = {
-      prompt: payloadData,
+      prompt: textToAsk || "Please analyze the uploaded image and describe it.",
+      images: images,
     };
 
     setLoader(true);
@@ -98,7 +102,7 @@ function ChatApp() {
 
       if (!scrolltoAns.current && result.length > 0) return;
 
-      showWordByWordAnswer(payloadData, emojiAnswer);
+      showWordByWordAnswer(displayText, emojiAnswer);
 
       setTimeout(() => {
         if (scrolltoAns.current) {
@@ -185,7 +189,7 @@ function ChatApp() {
               <SpeechTextInput
                 question={question}
                 setQuestion={setQuestion}
-                askQuestion={() => askQuestion()}
+                askQuestion={askQuestion}
                 isChatActive={false}
               />
 
@@ -225,7 +229,7 @@ function ChatApp() {
               <SpeechTextInput
                 question={question}
                 setQuestion={setQuestion}
-                askQuestion={() => askQuestion()}
+                askQuestion={askQuestion}
                 isChatActive={true}
               />
               <p className="text-gray-400 text-xs mt-2 font-medium">

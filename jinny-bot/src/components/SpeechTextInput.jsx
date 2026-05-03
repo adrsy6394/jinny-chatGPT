@@ -216,6 +216,24 @@ function SpeechTextInput({ question, setQuestion, askQuestion, isChatActive }) {
     setShowCamera(false);
   };
 
+  // Convert file to base64
+  const fileToBase64 = (file) => new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve({ data: reader.result.split(',')[1], type: file.type });
+    reader.readAsDataURL(file);
+  });
+
+  // Handle sending with files
+  const handleAskQuestion = async () => {
+    const imageFiles = attachedFiles.filter(f => f.type.startsWith('image/'));
+    let base64Images = [];
+    if (imageFiles.length > 0) {
+      base64Images = await Promise.all(imageFiles.map(f => fileToBase64(f.file)));
+    }
+    askQuestion(question || undefined, base64Images);
+    setAttachedFiles([]);
+  };
+
   const removeFile = (idx) => {
     setAttachedFiles(prev => prev.filter((_, i) => i !== idx));
   };
@@ -345,14 +363,14 @@ function SpeechTextInput({ question, setQuestion, askQuestion, isChatActive }) {
             )}
 
             <button
-              onClick={askQuestion}
-              disabled={!question.trim() && attachedFiles.length === 0}
-              className={`p-2 sm:p-2.5 rounded-full transition-all ml-1 ${
-                question.trim() || attachedFiles.length > 0 ? "bg-[#f26e22] text-white hover:bg-[#d95d18]" : "bg-zinc-600/50 text-zinc-400 cursor-not-allowed"
-              }`}
-            >
-              <ArrowUp className="w-5 h-5" />
-            </button>
+            onClick={handleAskQuestion}
+            disabled={!question.trim() && attachedFiles.length === 0}
+            className={`p-2 sm:p-2.5 rounded-full transition-all ml-1 ${
+              question.trim() || attachedFiles.length > 0 ? "bg-[#f26e22] text-white hover:bg-[#d95d18]" : "bg-zinc-600/50 text-zinc-400 cursor-not-allowed"
+            }`}
+          >
+            <ArrowUp className="w-5 h-5" />
+          </button>
           </div>
 
         </div>
