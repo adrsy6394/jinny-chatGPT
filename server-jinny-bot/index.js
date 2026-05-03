@@ -37,7 +37,7 @@ app.post('/api/auth/register', async (req, res) => {
     await user.save();
 
     const payload = { id: user.id };
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret123', { expiresIn: '7d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({ token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (error) {
@@ -56,7 +56,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
     const payload = { id: user.id };
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret123', { expiresIn: '7d' });
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
   } catch (error) {
