@@ -95,14 +95,15 @@ function ChatApp() {
         return;
       }
 
-      response = await response.json();
-      let dataString = response.answer || "I'm sorry, I couldn't get a response.";
+      const data = await response.json();
+      let dataString = data.answer || "I'm sorry, I couldn't get a response.";
+      const modelName = data.model || "Unknown";
 
       const emojiAnswer = addEmojisToAnswer(dataString);
 
       if (!scrolltoAns.current && result.length > 0) return;
 
-      showWordByWordAnswer(displayText, emojiAnswer);
+      showWordByWordAnswer(displayText, emojiAnswer, modelName);
 
       setTimeout(() => {
         if (scrolltoAns.current) {
@@ -119,7 +120,7 @@ function ChatApp() {
     }
   };
 
-  const showWordByWordAnswer = (questionText, fullAnswer) => {
+  const showWordByWordAnswer = (questionText, fullAnswer, modelName) => {
     setResult((prev) => [...prev, { type: "q", text: questionText }]);
 
     const words = fullAnswer.split(" ");
@@ -132,9 +133,9 @@ function ChatApp() {
 
           if (lastItem?.type === "a") {
             const updatedText = lastItem.text + " " + words[index];
-            return [...prev.slice(0, -1), { type: "a", text: updatedText }];
+            return [...prev.slice(0, -1), { type: "a", text: updatedText, model: modelName }];
           } else {
-            return [...prev, { type: "a", text: words[index] }];
+            return [...prev, { type: "a", text: words[index], model: modelName }];
           }
         });
 
@@ -180,7 +181,7 @@ function ChatApp() {
             // Empty State
             <div className="flex flex-col items-center justify-center w-full max-w-4xl mt-20 animate-fade-in">
               <h1 className="text-4xl sm:text-5xl md:text-6xl text-white font-serif font-medium text-center mb-4 tracking-wide drop-shadow-md">
-                What do you need help with today?
+                How can I help you today, {JSON.parse(localStorage.getItem('user') || '{}').name?.split(' ')[0] || 'Friend'}?
               </h1>
               <p className="text-white/80 text-lg sm:text-xl font-light mb-12 text-center">
                 Tell me what you need, and I'll make it happen.

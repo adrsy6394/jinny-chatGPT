@@ -11,6 +11,17 @@ const auth = require('./middleware/auth');
 
 dotenv.config();
 
+// Initialize OpenRouter SDK dynamically (ESM)
+let openRouterClient;
+const openRouterPromise = import('@openrouter/sdk').then(m => {
+  openRouterClient = new m.OpenRouter({
+    apiKey: process.env.OPENROUTER_API_KEY,
+    httpReferer: "https://jinny-chat-gpt-kkfo.vercel.app",
+    appTitle: "Jinny Bot",
+  });
+  return openRouterClient;
+});
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -84,38 +95,39 @@ app.post('/api/chat', auth, async (req, res) => {
         { type: "text", text: prompt || "Please analyze the uploaded image(s) and describe them in detail." },
         ...images.map(img => ({
           type: "image_url",
-          image_url: { url: `data:${img.type};base64,${img.data}` }
+          imageUrl: { url: `data:${img.type};base64,${img.data}` }
         }))
       ];
     } else {
       messageContent = prompt;
     }
 
-    const response = await axios.post(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        model: images && images.length > 0
-          ? "google/gemini-2.0-flash-exp:free"   // Vision-capable model
-          : "google/gemini-2.0-flash-001",       // Text-only model
+    // Ensure OpenRouter client is initialized
+    const openRouter = openRouterClient || await openRouterPromise;
+
+    const model = images && images.length > 0
+      ? "google/gemini-2.0-flash-001"   // Vision-capable model
+      : "z-ai/glm-5.1";                      // New text-only model
+
+    const response = await openRouter.chat.send({
+      chatRequest: {
+        model,
         messages: [
           { role: "user", content: messageContent }
         ],
-      },
-      {
-        headers: {
-          "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://jinny-chat-gpt-kkfo.vercel.app",
-          "X-Title": "Jinny Bot",
-        }
+        // Adding maxTokens to avoid credit issues with some models if needed
+        maxTokens: 4096, 
       }
-    );
+    });
 
-    const answer = response.data.choices[0].message.content;
-    res.json({ answer });
+    const answer = response.choices[0].message.content;
+    res.json({ 
+      answer,
+      model: model // Ab aapko pata chalega kaunsa model use hua
+    });
 
   } catch (error) {
-    console.error("Error calling OpenRouter API:", error?.response?.data || error.message);
+    console.error("Error calling OpenRouter SDK:", error.message);
     res.status(500).json({ error: "Failed to fetch response from AI" });
   }
 });
