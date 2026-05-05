@@ -14,12 +14,17 @@ dotenv.config();
 // Initialize OpenRouter SDK dynamically (ESM)
 let openRouterClient;
 const openRouterPromise = import('@openrouter/sdk').then(m => {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  console.log(`🔑 API Key Loaded: ${apiKey ? apiKey.substring(0, 10) + '...' : 'MISSING'}`);
   openRouterClient = new m.OpenRouter({
-    apiKey: process.env.OPENROUTER_API_KEY,
+    apiKey: apiKey,
     httpReferer: "https://jinny-chat-gpt-kkfo.vercel.app",
     appTitle: "Jinny Bot",
   });
   return openRouterClient;
+}).catch(err => {
+  console.error("❌ Failed to load OpenRouter SDK:", err.message);
+  throw err;
 });
 
 const app = express();
@@ -78,6 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/chat', auth, async (req, res) => {
+  console.log("📩 Incoming Chat Request:", req.body.prompt ? req.body.prompt.substring(0, 50) : "Image Only");
   try {
     const { prompt, images } = req.body;
 
@@ -105,30 +111,51 @@ app.post('/api/chat', auth, async (req, res) => {
     // Ensure OpenRouter client is initialized
     const openRouter = openRouterClient || await openRouterPromise;
 
-    const model = images && images.length > 0
-      ? "google/gemini-2.0-flash-001"   // Vision-capable model
-      : "z-ai/glm-5.1";                      // New text-only model
+    let model = images && images.length > 0
+      ? "google/gemini-2.5-flash-image"   // Vision model
+      : "z-ai/glm-5.1";                      // Primary text model
 
-    const response = await openRouter.chat.send({
-      chatRequest: {
-        model,
-        messages: [
-          { role: "user", content: messageContent }
-        ],
-        // Adding maxTokens to avoid credit issues with some models if needed
-        maxTokens: 4096, 
-      }
-    });
+    let response;
+    try {
+      console.log(`🤖 Trying Primary Model: ${model}`);
+      response = await openRouter.chat.send({
+        chatRequest: {
+          model,
+          messages: [{ role: "user", content: messageContent }],
+          maxTokens: 2000, 
+        }
+      });
+    } catch (error) {
+      console.error(`⚠️ Primary model (${model}) failed. Switching to fallback...`);
+      // Fallback Model
+      model = "google/gemini-2.0-flash-001";
+      console.log(`🔄 Retrying with Fallback Model: ${model}`);
+      
+      response = await openRouter.chat.send({
+        chatRequest: {
+          model,
+          messages: [{ role: "user", content: messageContent }],
+          maxTokens: 2000, 
+        }
+      });
+    }
+
+    // Safety check for response structure
+    if (!response || !response.choices || response.choices.length === 0) {
+      console.error("❌ OpenRouter Error: Invalid response structure", response);
+      return res.status(502).json({ error: "AI model returned an empty response. Try again." });
+    }
 
     const answer = response.choices[0].message.content;
     res.json({ 
       answer,
-      model: model // Ab aapko pata chalega kaunsa model use hua
+      model: model 
     });
 
   } catch (error) {
-    console.error("Error calling OpenRouter SDK:", error.message);
-    res.status(500).json({ error: "Failed to fetch response from AI" });
+    console.error("❌ FINAL BACKEND ERROR (api/chat):");
+    console.error(error.response ? JSON.stringify(error.response.data) : error.stack || error.message);
+    res.status(500).json({ error: "Internal Server Error. Please check backend logs." });
   }
 });
 

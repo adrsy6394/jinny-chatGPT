@@ -78,6 +78,9 @@ function ChatApp() {
     setLoader(true);
     setQuestion("");
 
+    // Add question to result immediately to show loader and trigger chat view
+    setResult((prev) => [...prev, { type: "q", text: displayText }]);
+
     try {
       const token = localStorage.getItem('token');
       let response = await fetch(URL, {
@@ -103,7 +106,7 @@ function ChatApp() {
 
       if (!scrolltoAns.current && result.length > 0) return;
 
-      showWordByWordAnswer(displayText, emojiAnswer, modelName);
+      showWordByWordAnswer(emojiAnswer, modelName);
 
       setTimeout(() => {
         if (scrolltoAns.current) {
@@ -120,13 +123,18 @@ function ChatApp() {
     }
   };
 
-  const showWordByWordAnswer = (questionText, fullAnswer, modelName) => {
-    setResult((prev) => [...prev, { type: "q", text: questionText }]);
+  const typingIntervalRef = useRef(null);
+
+  const showWordByWordAnswer = (fullAnswer, modelName) => {
+    // Clear any existing interval to prevent "Maximum update depth" and duplicate words
+    if (typingIntervalRef.current) {
+      clearInterval(typingIntervalRef.current);
+    }
 
     const words = fullAnswer.split(" ");
     let index = 0;
 
-    const interval = setInterval(() => {
+    typingIntervalRef.current = setInterval(() => {
       if (index < words.length) {
         setResult((prev) => {
           const lastItem = prev[prev.length - 1];
@@ -144,10 +152,11 @@ function ChatApp() {
           scrolltoAns.current.scrollTop = scrolltoAns.current.scrollHeight;
         }
       } else {
-        clearInterval(interval);
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
         setLoader(false);
       }
-    }, 40); // Faster typing speed
+    }, 15); 
   };
 
   const suggestions = [
@@ -215,9 +224,12 @@ function ChatApp() {
               {loader && (
                 <div className="flex justify-start mb-6">
                   <div className="glass-panel text-gray-800 px-6 py-4 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
-                    <span className="animate-bounce [animation-delay:-0.3s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
-                    <span className="animate-bounce [animation-delay:-0.15s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
-                    <span className="animate-bounce w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                    <div className="flex items-center gap-2">
+                      <span className="animate-bounce [animation-delay:-0.3s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                      <span className="animate-bounce [animation-delay:-0.15s] w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                      <span className="animate-bounce w-2 h-2 bg-[#f26e22] rounded-full"></span>
+                    </div>
+                    <span className="text-sm font-medium text-gray-500 ml-1">Loading...</span>
                   </div>
                 </div>
               )}

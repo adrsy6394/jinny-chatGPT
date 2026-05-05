@@ -23,7 +23,7 @@ function QuestionAnswer({ item, index }) {
 
         {/* Message Bubble */}
         <div
-          className={`p-3 sm:p-4 shadow-sm text-sm sm:text-base whitespace-pre-line break-words flex-1 ${
+          className={`p-3 sm:p-4 shadow-sm text-sm sm:text-base whitespace-pre-line break-words flex-1 overflow-hidden ${
             isQuestion
               ? "bg-[#f26e22] text-white rounded-2xl rounded-tr-sm font-medium"
               : "glass-panel text-gray-800 rounded-2xl rounded-tl-sm"
